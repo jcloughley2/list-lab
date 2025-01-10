@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}List Lab - Generate Lists{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">Generate a List</h1>
+                <form id="list-form" method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-primary w-100">Generate List</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h2 class="card-title h4">Explore Lists</h2>
+                <form action="{% url 'explore' %}" method="get" class="mb-4">
+                    <div class="input-group">
+                        <input type="text" name="q" class="form-control" placeholder="Search lists...">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="list-result" class="card mt-4 d-none">
+            <div class="card-body">
+                <h2 id="list-title" class="card-title"></h2>
+                <p id="list-description" class="text-muted"></p>
+                <div id="list-content" class="mt-3"></div>
+                <div class="mt-3">
+                    <span class="text-muted">Tags: </span>
+                    <span id="list-tags"></span>
+                </div>
+                
+                {% if user.is_authenticated %}
+                    <div class="mt-4">
+                        <form id="save-form" method="post" action="{% url 'save_list' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="title" id="save-title">
+                            <input type="hidden" name="description" id="save-description">
+                            <input type="hidden" name="content" id="save-content">
+                            <input type="hidden" name="tags" id="save-tags">
+                            <input type="hidden" name="prompt" id="save-prompt">
+                            <button type="submit" class="btn btn-success">Save This List</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="mt-4">
+                        <a href="{% url 'login' %}" class="btn btn-outline-primary">Login to Save Lists</a>
+                    </div>
+                {% endif %}
+                
+                <button id="try-again" class="btn btn-outline-secondary mt-3">Try Another Prompt</button>
+            </div>
+        </div>
+
+        <div id="loading" class="text-center mt-4 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Generating your list...</p>
+        </div>
+
+        {% if recent_lists %}
+            <div class="card mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="card-title h4 mb-0">Recent Lists</h2>
+                        <a href="{% url 'explore' %}" class="btn btn-outline-primary btn-sm">View All</a>
+                    </div>
+                    <div class="list-group">
+                        {% for list in recent_lists %}
+                            <a href="{% url 'list_detail' list.pk %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ list.title }}</h5>
+                                    <small class="text-muted">{{ list.created_at|date:"F j, Y" }}</small>
+                                </div>
+                                <p class="mb-1">{{ list.description|truncatewords:20 }}</p>
+                                <div class="mt-2">
+                                    <small class="text-muted">By {{ list.owner.username }}</small>
+                                    {% if list.original_list %}
+                                        <span class="badge bg-info">Forked</span>
+                                    {% endif %}
+                                    {% if list.forks.exists %}
+                                        <span class="badge bg-primary">{{ list.forks.count }} Fork{{ list.forks.count|pluralize }}</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#list-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const prompt = $('#id_prompt').val();
+        $('#loading').removeClass('d-none');
+        $('#list-result').addClass('d-none');
+        
+        $.ajax({
+            url: '{% url "generate_list" %}',
+            type: 'POST',
+            data: {
+                'prompt': prompt,
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                console.log('Response:', response);  // Debug log
+                
+                try {
+                    // Parse response if it's a string
+                    const data = typeof response === 'string' ? JSON.parse(response) : response;
+                    
+                    // Format the content
+                    let formattedContent = '';
+                    if (Array.isArray(data.content)) {
+                        // If content is an array, join with line breaks
+                        formattedContent = data.content.map(item => `<p>${item}</p>`).join('');
+                    } else {
+                        // If content is a string, split by newlines
+                        formattedContent = data.content.split('\n').map(line => `<p>${line}</p>`).join('');
+                    }
+                    
+                    $('#list-title').text(data.title);
+                    $('#list-description').text(data.description);
+                    $('#list-content').html(formattedContent);
+                    $('#list-tags').text(data.tags);
+                    
+                    // Update hidden fields for saving
+                    $('#save-title').val(data.title);
+                    $('#save-description').val(data.description);
+                    $('#save-content').val(Array.isArray(data.content) ? data.content.join('\n') : data.content);
+                    $('#save-tags').val(data.tags);
+                    $('#save-prompt').val(prompt);
+                    
+                    $('#loading').addClass('d-none');
+                    $('#list-result').removeClass('d-none');
+                } catch (error) {
+                    console.error('Error processing response:', error);
+                    alert('Error processing the generated list. Please try again.');
+                    $('#loading').addClass('d-none');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                alert('Error generating list. Please try again.');
+                $('#loading').addClass('d-none');
+            }
+        });
+    });
+    
+    $('#try-again').click(function() {
+        $('#list-form')[0].reset();
+        $('#list-result').addClass('d-none');
+    });
+});
+</script>
+{% endblock %} 

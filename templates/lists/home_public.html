@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}List Lab - Discover and Create Lists{% endblock %}
+
+{% block content %}
+<div class="px-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-4">Welcome to List Lab</h1>
+        <p class="lead mb-4">Create, share, and discover curated lists on any topic.</p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{% url 'register' %}" class="btn btn-primary btn-lg px-4 gap-3">Get Started</a>
+            <a href="{% url 'login' %}" class="btn btn-outline-secondary btn-lg px-4">Login</a>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Discover Lists</h2>
+            <a href="{% url 'explore' %}" class="btn btn-outline-primary">View All</a>
+        </div>
+
+        <form action="{% url 'explore' %}" method="get" class="mb-4">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Search lists...">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if lists %}
+    {% include 'lists/includes/list_grid.html' %}
+{% else %}
+    <div class="text-center mt-5">
+        <p class="lead">No lists found.</p>
+    </div>
+{% endif %}
+{% endblock %} 

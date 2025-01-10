@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}My Lists - List Lab{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">My Lists</h1>
+                
+                {% if lists %}
+                    <div class="list-group mt-4">
+                        {% for list in lists %}
+                            <a href="{% url 'list_detail' list.pk %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ list.title }}</h5>
+                                    <small class="text-muted">{{ list.created_at|date:"F j, Y" }}</small>
+                                </div>
+                                <p class="mb-1">{{ list.description|truncatewords:30 }}</p>
+                                <div class="mt-2">
+                                    <span class="badge bg-{% if list.is_public %}success{% else %}secondary{% endif %}">
+                                        {{ list.is_public|yesno:"Public,Private" }}
+                                    </span>
+                                    {% if list.original_list %}
+                                        <span class="badge bg-info">Forked</span>
+                                    {% endif %}
+                                    {% if list.forks.exists %}
+                                        <span class="badge bg-primary">{{ list.forks.count }} Fork{{ list.forks.count|pluralize }}</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center mt-4">
+                        <p class="lead">You haven't created any lists yet.</p>
+                        <a href="{% url 'home' %}" class="btn btn-primary">Create Your First List</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

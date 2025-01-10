@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ profile.user.username }}'s Lists - List Lab{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">{{ profile.user.username }}'s Public Lists</h1>
+                
+                {% if profile.bio %}
+                    <div class="alert alert-light">
+                        {{ profile.bio }}
+                    </div>
+                {% endif %}
+                
+                {% if lists %}
+                    <div class="list-group mt-4">
+                        {% for list in lists %}
+                            <a href="{% url 'list_detail' list.pk %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ list.title }}</h5>
+                                    <small class="text-muted">{{ list.created_at|date:"F j, Y" }}</small>
+                                </div>
+                                <p class="mb-1">{{ list.description|truncatewords:30 }}</p>
+                                <div class="mt-2">
+                                    {% if list.original_list %}
+                                        <span class="badge bg-info">Forked</span>
+                                    {% endif %}
+                                    {% if list.forks.exists %}
+                                        <span class="badge bg-primary">{{ list.forks.count }} Fork{{ list.forks.count|pluralize }}</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center mt-4">
+                        <p class="lead">{{ profile.user.username }} hasn't created any public lists yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

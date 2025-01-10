@@ -1,0 +1,521 @@
+{% load static %}
+{% load list_extras %}
+{% load humanize %}
+
+<!-- Add CSRF Token -->
+{% csrf_token %}
+
+<style>
+.list-grid {
+    width: 100%;
+    margin: 0 auto;
+}
+
+.list-card {
+    width: 300px;
+    margin-bottom: 1rem;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    break-inside: avoid;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    cursor: pointer;
+}
+
+.list-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.list-card-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #212529;
+}
+
+.list-card-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.list-card-meta small {
+    color: #6c757d;
+}
+
+.list-card-badges {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+/* Drawer Styles */
+.drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.drawer {
+    position: fixed;
+    top: 0;
+    right: -600px;
+    width: 100%;
+    max-width: 600px;
+    height: 100%;
+    background: #fff;
+    z-index: 1050;
+    transition: right 0.3s ease;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+}
+
+.drawer.active {
+    right: 0;
+}
+
+.drawer-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+}
+
+.drawer-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: #6c757d;
+    transition: color 0.2s ease;
+}
+
+.drawer-close:hover {
+    color: #343a40;
+}
+
+.drawer-content {
+    padding: 1.5rem;
+}
+
+.drawer-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.list-card-footer {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(0,0,0,.125);
+}
+
+.like-button, .fork-button, .visibility-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #6c757d;
+    transition: color 0.2s ease;
+}
+
+.like-button:hover {
+    color: #dc3545;
+}
+
+.like-button.liked {
+    color: #dc3545;
+}
+
+.fork-button:hover {
+    color: #0d6efd;
+}
+
+.fork-button.forked {
+    color: #0d6efd;
+}
+
+.visibility-button {
+    color: #6c757d;
+}
+
+.visibility-button:hover {
+    color: #198754;
+}
+
+.visibility-button.public {
+    color: #198754;
+}
+
+.like-button i, .fork-button i, .visibility-button i {
+    font-size: 1.1rem;
+}
+
+.list-card-content {
+    margin: 0.75rem 0;
+    padding-left: 1.25rem;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.list-card-content ul {
+    list-style: disc;
+    margin: 0;
+    padding: 0;
+}
+
+.list-card-content li {
+    margin-bottom: 0.25rem;
+}
+</style>
+
+<!-- Add Masonry.js -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+
+<div class="list-grid">
+    {% for list in lists %}
+        <div class="list-card grid-item" data-list-id="{{ list.pk }}">
+            <div onclick="openDrawer({{ list.pk }})">
+                <h3 class="list-card-title">{{ list.title }}</h3>
+                <div class="list-card-content">
+                    <ul>
+                        {% with items=list.content.split|slice:":3" %}
+                            {% for item in items %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                            {% if list.content.split|length > 3 %}
+                                <li class="text-muted">...</li>
+                            {% endif %}
+                        {% endwith %}
+                    </ul>
+                </div>
+                <div class="list-card-meta">
+                    <small>{{ list.created_at|naturaltime }}</small>
+                </div>
+            </div>
+            
+            <div class="list-card-footer">
+                <button type="button" 
+                        class="like-button {% if list|has_liked:user %}liked{% endif %}"
+                        onclick="toggleLike(event, {{ list.pk }})"
+                        {% if not user.is_authenticated %}disabled title="Login to like lists"{% endif %}
+                        title="{{ list|has_liked:user|yesno:'Unlike this list,Like this list' }}">
+                    <i class="bi {% if list|has_liked:user %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                    <span class="like-count">{{ list.likes.count }}</span>
+                </button>
+                
+                <button type="button" 
+                        class="fork-button {% if list|has_forked:user %}forked{% endif %}"
+                        onclick="quickFork(event, {{ list.pk }})"
+                        {% if not user.is_authenticated %}disabled title="Login to fork lists"{% endif %}
+                        title="Fork this list">
+                    <i class="bi {% if list|has_forked:user %}bi-diagram-2-fill{% else %}bi-diagram-2{% endif %}"></i>
+                    <span class="fork-count">{{ list.forks.count }}</span>
+                </button>
+
+                {% if not explore_page and user == list.owner %}
+                    <button type="button" 
+                            class="visibility-button {% if list.is_public %}public{% endif %}"
+                            onclick="toggleVisibility(event, {{ list.pk }})"
+                            title="{{ list.is_public|yesno:'Make private,Make public' }}">
+                        <i class="bi {% if list.is_public %}bi-eye-fill{% else %}bi-eye-slash-fill{% endif %}"></i>
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-header">
+        <h2 class="h4 mb-0">List Details</h2>
+        <button class="drawer-close" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-content card-body" id="drawerContent">
+        <!-- Loading state -->
+        <div class="drawer-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize Masonry
+document.addEventListener('DOMContentLoaded', function() {
+    var grid = document.querySelector('.list-grid');
+    var masonry = new Masonry(grid, {
+        itemSelector: '.grid-item',
+        columnWidth: 300,
+        gutter: 16,
+        fitWidth: true,
+        transitionDuration: '0.2s'
+    });
+
+    // Layout Masonry after each image loads
+    grid.addEventListener('load', function() {
+        masonry.layout();
+    }, true);
+});
+
+function openDrawer(listId) {
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawerOverlay');
+    const content = document.getElementById('drawerContent');
+
+    // Show loading state
+    content.innerHTML = `
+        <div class="drawer-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+
+    // Show drawer and overlay
+    drawer.classList.add('active');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    // Fetch list details
+    fetch(`/list/${listId}/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        content.innerHTML = html;
+        
+        // Re-initialize interactive elements
+        content.querySelectorAll('button').forEach(button => {
+            if (button.classList.contains('like-button')) {
+                button.onclick = (e) => toggleLike(e, listId);
+            } else if (button.classList.contains('fork-button')) {
+                button.onclick = (e) => quickFork(e, listId);
+            } else if (button.classList.contains('visibility-button')) {
+                button.onclick = (e) => toggleVisibility(e, listId);
+            }
+        });
+
+        // Update URLs to prevent navigation
+        content.querySelectorAll('a').forEach(link => {
+            if (link.href.includes('/list/')) {
+                const linkListId = link.href.match(/\/list\/(\d+)/)[1];
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    openDrawer(linkListId);
+                };
+            }
+        });
+
+        // Initialize any Bootstrap components
+        if (content.querySelector('[data-bs-toggle="modal"]')) {
+            new bootstrap.Modal(content.querySelector('.modal'));
+        }
+    })
+    .catch(error => {
+        content.innerHTML = '<div class="alert alert-danger">Error loading list details</div>';
+        console.error('Error:', error);
+    });
+}
+
+function closeDrawer() {
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawerOverlay');
+    
+    drawer.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close drawer on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeDrawer();
+    }
+});
+
+// Add CSRF token handling
+function getCSRFToken() {
+    const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfTokenElement) {
+        console.error('CSRF token not found');
+        return null;
+    }
+    return csrfTokenElement.value;
+}
+
+// Update toggleLike function
+function toggleLike(event, listId) {
+    event.stopPropagation();
+    
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) return;
+    
+    if (event.currentTarget.hasAttribute('disabled')) {
+        window.location.href = '{% url "login" %}';
+        return;
+    }
+    
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+    const countSpan = button.querySelector('.like-count');
+    
+    fetch(`/list/${listId}/like/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.liked) {
+            button.classList.add('liked');
+            icon.classList.remove('bi-heart');
+            icon.classList.add('bi-heart-fill');
+        } else {
+            button.classList.remove('liked');
+            icon.classList.remove('bi-heart-fill');
+            icon.classList.add('bi-heart');
+        }
+        countSpan.textContent = data.count;
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Update quickFork function
+function quickFork(event, listId) {
+    event.stopPropagation();
+    
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) return;
+    
+    if (event.currentTarget.hasAttribute('disabled')) {
+        window.location.href = '{% url "login" %}';
+        return;
+    }
+    
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+    const countSpan = button.querySelector('.fork-count');
+    
+    fetch(`/list/${listId}/fork/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            is_public: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            button.classList.add('forked');
+            icon.classList.remove('bi-diagram-2');
+            icon.classList.add('bi-diagram-2-fill');
+            countSpan.textContent = data.fork_count;
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        List forked successfully! <a href="/list/${data.fork_id}/" class="text-white text-decoration-underline">View your fork</a>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            new bootstrap.Toast(toast).show();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Update toggleVisibility function
+function toggleVisibility(event, listId) {
+    event.stopPropagation();
+    
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) return;
+    
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+    
+    fetch(`/list/${listId}/toggle-visibility/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.is_public) {
+            button.classList.add('public');
+            icon.classList.remove('bi-eye-slash-fill');
+            icon.classList.add('bi-eye-fill');
+            button.title = 'Make private';
+        } else {
+            button.classList.remove('public');
+            icon.classList.remove('bi-eye-fill');
+            icon.classList.add('bi-eye-slash-fill');
+            button.title = 'Make public';
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${data.message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        new bootstrap.Toast(toast).show();
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script> 

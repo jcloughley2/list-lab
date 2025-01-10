@@ -1,0 +1,149 @@
+{% load crispy_forms_tags %}
+{% load list_extras %}
+{% load humanize %}
+
+<!-- Add CSRF Token -->
+{% csrf_token %}
+
+<div data-list-id="{{ list.pk }}">
+    <h1 class="card-title mb-4">{{ list.title }}</h1>
+
+    <div class="d-flex align-items-center gap-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <button type="button" 
+                    class="like-button {% if list|has_liked:user %}liked{% endif %}"
+                    onclick="toggleLike(event, {{ list.pk }})"
+                    {% if not user.is_authenticated %}disabled title="Login to like lists"{% endif %}
+                    title="{{ list|has_liked:user|yesno:'Unlike this list,Like this list' }}">
+                <i class="bi {% if list|has_liked:user %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                <span class="like-count">{{ list.likes.count }}</span>
+            </button>
+            
+            <button type="button" 
+                    class="fork-button {% if list|has_forked:user %}forked{% endif %}"
+                    onclick="quickFork(event, {{ list.pk }})"
+                    {% if not user.is_authenticated %}disabled title="Login to fork lists"{% endif %}
+                    title="Fork this list">
+                <i class="bi {% if list|has_forked:user %}bi-diagram-2-fill{% else %}bi-diagram-2{% endif %}"></i>
+                <span class="fork-count">{{ list.forks.count }}</span>
+            </button>
+
+            {% if user == list.owner %}
+                <button type="button" 
+                        class="visibility-button {% if list.is_public %}public{% endif %}"
+                        onclick="toggleVisibility(event, {{ list.pk }})"
+                        title="{{ list.is_public|yesno:'Make private,Make public' }}">
+                    <i class="bi {% if list.is_public %}bi-eye-fill{% else %}bi-eye-slash-fill{% endif %}"></i>
+                </button>
+            {% endif %}
+        </div>
+
+        <div class="text-muted">
+            Created by <a href="{% url 'user_lists' list.owner.username %}">{{ list.owner.username }}</a>
+            {{ list.created_at|naturaltime }}
+            {% if list.original_list %}
+                <br>
+                Forked from <a href="{% url 'list_detail' list.original_list.pk %}">original list</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="list-content mt-4">
+        {{ list.content|linebreaks }}
+    </div>
+
+    <div class="mt-4">
+        {% if user.is_authenticated %}
+            {% if user == list.owner %}
+                <div class="btn-group">
+                    <a href="{% url 'edit_list' list.pk %}" class="btn btn-primary">Edit List</a>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete({{ list.pk }})">Delete List</button>
+                </div>
+                
+                <!-- Delete Confirmation Modal -->
+                <div class="modal fade" id="deleteModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Delete List</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to delete this list? This action cannot be undone.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <form method="post" action="{% url 'delete_list' list.pk %}" class="d-inline" id="deleteForm">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <form method="post" action="{% url 'fork_list' list.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    {{ fork_form|crispy }}
+                    <button type="submit" class="btn btn-success">Fork This List</button>
+                </form>
+            {% endif %}
+        {% else %}
+            <a href="{% url 'login' %}" class="btn btn-outline-primary">Login to Fork This List</a>
+        {% endif %}
+    </div>
+
+    {% if list.prompt %}
+        <div class="mt-4">
+            <h5>Original Prompt</h5>
+            <p class="text-muted">{{ list.prompt }}</p>
+        </div>
+    {% endif %}
+
+    {% if list.forks.exists %}
+        <div class="mt-4">
+            <h3>Forks</h3>
+            <div class="list-group">
+                {% for fork in list.forks.all %}
+                    {% if fork.is_public or user == fork.owner %}
+                        <a href="{% url 'list_detail' fork.pk %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ fork.title }}</h5>
+                                <small>{{ fork.created_at|date:"F j, Y" }}</small>
+                            </div>
+                            <p class="mb-1">Forked by {{ fork.owner.username }}</p>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function confirmDelete(listId) {
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+    
+    // Handle successful deletion
+    document.getElementById('deleteForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        }).then(response => {
+            if (response.ok) {
+                // Close the drawer and modal
+                closeDrawer();
+                deleteModal.hide();
+                
+                // Refresh the page to update the list
+                window.location.reload();
+            }
+        });
+    });
+}
+</script> 

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}My Lists - List Lab{% endblock %}
+
+{% block content %}
+<div class="mb-4 px-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="mb-3">My Lists</h1>
+            
+            <form method="get" class="mb-3">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search your lists..." value="{{ query }}">
+                    {% if current_visibility != 'all' %}
+                        <input type="hidden" name="visibility" value="{{ current_visibility }}">
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    {% if query %}
+                        <a href="{% url 'home' %}{% if current_visibility != 'all' %}?visibility={{ current_visibility }}{% endif %}" 
+                           class="btn btn-outline-secondary">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <div class="btn-group">
+                <a href="{% url 'home' %}{% if query %}?q={{ query }}{% endif %}" 
+                   class="btn btn-sm btn-{% if current_visibility == 'all' %}primary{% else %}outline-primary{% endif %}">
+                    All
+                </a>
+                <a href="{% url 'home' %}?visibility=public{% if query %}&q={{ query }}{% endif %}" 
+                   class="btn btn-sm btn-{% if current_visibility == 'public' %}primary{% else %}outline-primary{% endif %}">
+                    Public
+                </a>
+                <a href="{% url 'home' %}?visibility=private{% if query %}&q={{ query }}{% endif %}" 
+                   class="btn btn-sm btn-{% if current_visibility == 'private' %}primary{% else %}outline-primary{% endif %}">
+                    Private
+                </a>
+            </div>
+        </div>
+        <a href="{% url 'create_list' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Create New List
+        </a>
+    </div>
+
+    {% if query %}
+        <p class="text-muted mt-3">
+            {% with count=lists|length %}
+                Found {{ count }} result{{ count|pluralize }} for "{{ query }}"
+            {% endwith %}
+        </p>
+    {% endif %}
+</div>
+
+{% if lists %}
+    {% include 'lists/includes/list_grid.html' %}
+{% else %}
+    <div class="text-center mt-5">
+        {% if query %}
+            <p class="lead">No lists found matching your search.</p>
+            <a href="{% url 'home' %}{% if current_visibility != 'all' %}?visibility={{ current_visibility }}{% endif %}" 
+               class="btn btn-outline-primary">Clear Search</a>
+        {% else %}
+            <p class="lead">You haven't created any lists yet.</p>
+            <a href="{% url 'create_list' %}" class="btn btn-primary">Create Your First List</a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %} 

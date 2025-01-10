@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ list.title }} - List Lab{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">{{ list.title }}</h1>
+                
+                <div class="text-muted mb-3">
+                    Created by <a href="{% url 'user_lists' list.owner.username %}">{{ list.owner.username }}</a>
+                    on {{ list.created_at|date:"F j, Y" }}
+                    {% if list.original_list %}
+                        <br>
+                        Forked from <a href="{% url 'list_detail' list.original_list.pk %}">original list</a>
+                    {% endif %}
+                </div>
+
+                <p class="lead">{{ list.description }}</p>
+                
+                <div class="list-content mt-4">
+                    {{ list.content|linebreaks }}
+                </div>
+
+                <div class="mt-4">
+                    <h5>Tags</h5>
+                    <p class="text-muted">{{ list.tags }}</p>
+                </div>
+
+                <div class="mt-4">
+                    {% if user.is_authenticated %}
+                        {% if user == list.owner %}
+                            <a href="{% url 'edit_list' list.pk %}" class="btn btn-primary">Edit List</a>
+                        {% else %}
+                            <form method="post" action="{% url 'fork_list' list.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                {{ fork_form|crispy }}
+                                <button type="submit" class="btn btn-success">Fork This List</button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-outline-primary">Login to Fork This List</a>
+                    {% endif %}
+                </div>
+
+                {% if list.prompt %}
+                    <div class="mt-4">
+                        <h5>Original Prompt</h5>
+                        <p class="text-muted">{{ list.prompt }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if list.forks.exists %}
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h3>Forks</h3>
+                    <div class="list-group">
+                        {% for fork in list.forks.all %}
+                            {% if fork.is_public or user == fork.owner %}
+                                <a href="{% url 'list_detail' fork.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ fork.title }}</h5>
+                                        <small>{{ fork.created_at|date:"F j, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">Forked by {{ fork.owner.username }}</p>
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

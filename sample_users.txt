@@ -1,0 +1,20 @@
+Common password for all users: testpass123
+
+Sample Users:
+- mfitzgerald
+- mvincent
+- ywilliams
+- sheila47
+- liuwilliam
+- michellehernandez
+- suarezeric
+- masondanny
+- dparker
+- romerotravis
+- jared42
+- kevin77
+- joan88
+- longdonald
+- robinkent
+
+Note: These are sample accounts generated for testing purposes. Each user has 2-5 lists and some have forked other users' lists. 

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Explore Lists - List Lab{% endblock %}
+
+{% block content %}
+<div class="mb-4 px-4">
+    <h1 class="mb-4">Explore Lists</h1>
+    
+    <form method="get" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Search lists..." value="{{ query }}">
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if query %}
+                <a href="{% url 'explore' %}" class="btn btn-outline-secondary">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if query %}
+        <p class="text-muted mb-4">
+            {% if lists %}
+                Found {{ lists|length }} result{{ lists|length|pluralize }} for "{{ query }}"
+            {% else %}
+                No results found for "{{ query }}"
+            {% endif %}
+        </p>
+    {% endif %}
+</div>
+
+{% if lists %}
+    {% include 'lists/includes/list_grid.html' %}
+{% else %}
+    <div class="text-center mt-5">
+        <p class="lead">No lists found.</p>
+        <a href="{% url 'home' %}" class="btn btn-primary">Create the First List</a>
+    </div>
+{% endif %}
+{% endblock %} 
